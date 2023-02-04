@@ -188,6 +188,45 @@ sub lexer($json) {
 
 ################################ Parser
 
+sub makeTokens(@tokens) {
+    $pp{"tokens"} = \@tokens;
+    $pp{"tokensLength"} = $#tokens;
+}
+
+sub tokensLength() {
+    return $pp{"tokensLength"};
+}
+
+sub getToken() {
+    my @tokens = @{$pp{"tokens"}};
+    my $currentToken = shift(@tokens);
+    $pp{"tokens"} = \@tokens;
+    $pp{"tokensLength"} = $#tokens;
+    return $currentToken;
+}
+
+sub nextToken() {
+    my @tokens = @{$pp{"tokens"}};
+    return $tokens[0];
+}
+
+sub putToken($token) {
+    my @tokens = @{ $pp{"tokens"}};
+    unshift(@tokens, $token);
+    $pp{"tokens"} = \@tokens;
+    $pp{"tokensLength"} = $#tokens;
+}
+
+########################################## Parser
+
+sub parse($json) {
+    my @tokens = lexer($json);
+    makeTokens(@tokens);
+
+    use Data::Dumper;
+    print Dumper \@tokens;
+}
+
 my $json = '{
     "false" : false,
     "null" : null,
@@ -200,8 +239,4 @@ my $json = '{
     "1" : 41
   }
 ';
-
-my @tokens = lexer($json);
-
-use Data::Dumper;
-print Dumper \@tokens;
+parse($json);
