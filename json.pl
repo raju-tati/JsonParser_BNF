@@ -223,9 +223,53 @@ sub parse($json) {
     my @tokens = lexer($json);
     makeTokens(@tokens);
 
-    use Data::Dumper;
-    print Dumper \@tokens;
+    #use Data::Dumper;
+    #print Dumper \@tokens;
+
+    my $ast = json();
+    if ($ast) {
+        $pp{"ast"} = $ast;
+        return $ast;
+    }
+    else {
+        die "not a valid json";
+    }
 }
+
+sub json() {
+    my $token = getToken();
+    if($token->{value} ne "{") {
+        die "json begins with {";
+    }
+
+    my $keyValues = KeyValues();
+
+    $token = getToken();
+    if($token->{value} ne "}") {
+        die "json ends with }";
+    }
+
+    return { "keyValues" => $keyValues };
+}
+
+sub keyValues {
+    my $keyValues = {};
+    while(1) {
+        my $keyValue = keyValue();
+        $keyValues->{"keyValue"} = $keyValue;
+
+        my $token = getToken();
+        if($token->{value} ne ",") {
+            putToken($token);
+            return $keyValues;
+        }
+
+        my $keyValue = keyValue();
+        $keyValues->{"keyValue"} = $keyValue;
+    }
+}
+
+
 
 my $json = '{
     "false" : false,
@@ -240,3 +284,36 @@ my $json = '{
   }
 ';
 parse($json);
+
+
+<JSON>                <ws: (\s++)*>  <Hash>
+<Any_Value>           <String_Value> | <Numeric_Value>
+                        | <Null_Value> | <Hash> | <Array>
+                        | <True> | <False>
+
+<Hash>                <TokenOpenBrace> <Key_Values> <TokenClosedBrace>
+
+<Key_Values>          <Key_Value> <Comma> <Key_Value>
+<Key_Value>           <Key> <Sep> <Value>
+<Key>                 <String_Value>
+<Value>               <Any_Value>
+
+<Array>               <TokenOpenBracket> <Array_Elements> <TokenClosedBracket>
+<Array_Elements>      <Array_Element> <Comma> <Array_Element>
+<Array_Element>       <Any_Value>
+
+<String_Value>        "<Words>"
+<Words>               (.)*?
+
+<Numeric_Value>       \s*<Number>\s*
+<Number>              [-]?[\d\.]*
+
+<Null_Value>            null
+<True>                  true
+<False>                 false
+<Sep>                   \:
+<Comma>                 \,
+<TokenOpenBrace>        \{
+<TokenClosedBrace>      \}
+<TokenOpenBracket>      \[
+<TokenClosedBracket>    \]
