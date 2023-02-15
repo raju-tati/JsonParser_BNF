@@ -51,7 +51,7 @@ sub isSpaceNewLine($char) {
 }
 
 sub isDigit($char) {
-    my @digits = ( "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" );
+    my @digits = ( 0, "1", "2", "3", "4", "5", "6", "7", "8", "9" );
     foreach my $digit (@digits) {
         if ( $char eq $digit ) {
             return 1;
@@ -256,7 +256,7 @@ sub hash() {
 
     my $hash = {};
     $hash->{"openBrace"} = "{";
-    $hash->{"keyValues"} = $keyValues;
+    $hash->{$keyValues} = $keyValues;
     $hash->{"closeBrace"} = "}";
 
     return $hash;
@@ -276,7 +276,7 @@ sub keyValues() {
     my $keyValues = {};
     while(1) {
         my $keyValue = keyValue();
-        $keyValues->{"keyValue"} = $keyValue;
+        $keyValues->{"$keyValue"} = $keyValue;
 
         my $token = getToken();
         if($token->{value} ne ",") {
@@ -285,14 +285,14 @@ sub keyValues() {
         }
 
         $keyValue = keyValue();
-        $keyValues->{"keyValue"} = $keyValue;
+        $keyValues->{"$keyValue"} = $keyValue;
     }
 }
 
 sub keyValue() {
     my $keyValue = {};
 
-    my $key = key();
+    my $key = key();   
     if(! $key) { return 0; }
 
     my $separator = sep();
@@ -361,6 +361,7 @@ sub numericValue() {
     if( $token->{"type"} eq "Number") {
         $numericValue = $token->{"value"};
     } else {
+        putToken($token);
         return 0;
     }
 
@@ -373,6 +374,7 @@ sub sep() {
     if($token->{"type"} eq "specialCharachter" && $token->{"value"} eq ":") {
         $sep = ":";
     } else {
+        putToken($token);
         return 0;
     }
 
@@ -427,8 +429,10 @@ sub anyValue() {
 
 sub nullValue() {
     my $token = getToken();
+    use Data::Printer;
+    p $token;
     if( $token->{"value"} eq "null" ) {
-        return 1;
+        return "null";
     } else {
         putToken($token);
         return 0;
@@ -438,7 +442,7 @@ sub nullValue() {
 sub true() {
     my $token = getToken();
     if( $token->{"value"} eq "true" ) {
-        return 1;
+        return "true";
     } else {
         putToken($token);
         return 0;
@@ -448,7 +452,7 @@ sub true() {
 sub false() {
     my $token = getToken();
     if( $token->{"value"} eq "false" ) {
-        return 1;
+        return "false";
     } else {
         putToken($token);
         return 0;
@@ -501,12 +505,46 @@ my $json = '{
     "false" : false,
     "null" : null,
     "true" : true,
-    "foo" : [3, 4, "౮"],
-    "buz": "a string ఈ వారపు వ్యాసం with spaces",
-    "more": {
-      "3" : [8, 9]
-    },
+    "foo" : "thirtyfour",
+    "buz":  { 
+        "zub" : "a string with spaces",
+        "more": "three"
+    }
     "1" : 41
   }
 ';
-parse($json);
+
+my $jsonResultHash = parse($json);
+use Data::Printer;
+p %{$jsonResultHash->{hash}};
+
+
+
+my $bnf = '
+<JSON>                <Hash>
+<Any_Value>           <String_Value> | <Numeric_Value>
+                        | <Null_Value> | <Hash> | <Array>
+                        | <True> | <False>
+<Hash>                <TokenOpenBrace> <Key_Values> <TokenClosedBrace>
+<Key_Values>          <Key_Value> <Comma> <Key_Value>
+<Key_Value>           <Key> <Sep> <Value>
+<Key>                 <String_Value>
+<Value>               <Any_Value>
+<Array>               <TokenOpenBracket> <Array_Elements> <TokenClosedBracket>
+<Array_Elements>      <Array_Element> <Comma> <Array_Element>
+<Array_Element>       <Any_Value>
+<String_Value>        "<Words>"
+<Words>               (.)*?
+<Numeric_Value>       \s*<Number>\s*
+<Number>              [-]?[\d\.]*
+<Null_Value>            null
+<True>                  true
+<False>                 false
+<Sep>                   \:
+<Comma>                 \,
+<TokenOpenBrace>        \{
+<TokenClosedBrace>      \}
+<TokenOpenBracket>      \[
+<TokenClosedBracket>    \]
+
+';
