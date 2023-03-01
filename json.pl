@@ -1,12 +1,12 @@
 use strict;
 use warnings;
 use utf8;
-#use Tie::IxHash;
+use Tie::IxHash;
 use feature qw(signatures);
 no warnings qw(experimental::smartmatch experimental::signatures);
 
 my %pp = ();
-#tie %pp, 'Tie::IxHash';
+tie %pp, 'Tie::IxHash';
 
 
 ################ lexer
@@ -88,7 +88,7 @@ sub isQuote($char) {
 }
 
 sub isSpecialCharachter($char) {
-    my @specialCharachters = ( "{", "}", ",", ":" );
+    my @specialCharachters = ( "{", "}", "[", "]", ",", ":" );
 
     if ( $char ~~ @specialCharachters ) {
         return 1;
@@ -218,19 +218,21 @@ sub putToken($token) {
 }
 
 ########################################## Parser
+use JSON;
+use utf8;
+use Data::Printer;
 
 sub parse($json) {
     my @tokens = lexer($json);
     makeTokens(@tokens);
 
-    #use Data::Dumper;
-    #print Dumper \@tokens;
-
+    my %hash;
     my $ast = json();
-    if ($ast) {
-        $pp{"ast"} = $ast;
-    }
-    else {
+    if($ast) {
+        $hash{"ast"} = $ast;
+        print JSON->new->ascii->pretty->encode(\%hash);
+        return %hash;
+    } else {
         return 0;
     }
 }
@@ -244,6 +246,8 @@ sub json() {
     }
 }
 
+
+
 sub hash() {
     my $openBrace = tokenOpenBrace();
     if(! $openBrace) { return 0; }
@@ -254,69 +258,26 @@ sub hash() {
     my $closeBrace = tokenCloseBrace();
     if(! $closeBrace) { return 0; }
 
-    my $hash = {};
-    $hash->{"openBrace"} = "{";
-    $hash->{$keyValues} = $keyValues;
-    $hash->{"closeBrace"} = "}";
-
-    return $hash;
+    return { "keyValues" => $keyValues };
 }
 
-sub tokenOpenBrace() {
-    my $token = getToken();
-    if( $token->{"value"} eq "{" ) {
-        return 1;
-    } else {
-        putToken($token);
-        return 0;
-    }
+sub array() {
+    my $openBracket = tokenOpenBracket();
+    if(! $openBracket) { return 0; }
+
+    my $arrayElements = arrayElements();
+    if(! $arrayElements) { return 0; }
+
+    my $closeBracket = tokenClosedBracket();
+    if(! $closeBracket) { return 0; }
+
+    return { "arrayElements" => $arrayElements };
 }
 
-sub keyValues() {
-    my $keyValues = {};
-    while(1) {
-        my $keyValue = keyValue();
-        $keyValues->{"$keyValue"} = $keyValue;
-
-        my $token = getToken();
-        if($token->{value} ne ",") {
-            putToken($token);
-            return $keyValues;
-        }
-
-        $keyValue = keyValue();
-        $keyValues->{"$keyValue"} = $keyValue;
-    }
-}
-
-sub keyValue() {
-    my $keyValue = {};
-
-    my $key = key();   
-    if(! $key) { return 0; }
-
-    my $separator = sep();
-    if(! $separator) { return 0; }
-
-    my $value = value();
-    if(! $value) { return 0; }
-
-    $keyValue->{$key} = $value;
-    return $keyValue;
-}
-
-sub tokenCloseBrace() {
-    my $token = getToken();
-    if( $token->{"value"} eq "}" ) {
-        return 1;
-    } else {
-        putToken($token);
-        return 0;
-    }
-}
 
 sub tokenOpenBracket() {
     my $token = getToken();
+
     if( $token->{"value"} eq "[" ) {
         return 1;
     } else {
@@ -325,7 +286,7 @@ sub tokenOpenBracket() {
     }
 }
 
-sub tokenCloseBracket() {
+sub tokenClosedBracket() {
     my $token = getToken();
     if( $token->{"value"} eq "]" ) {
         return 1;
@@ -335,11 +296,70 @@ sub tokenCloseBracket() {
     }
 }
 
+sub keyValues() {
+    my @keyValue = ();
+    while(1) {
+        my $keyValue = keyValue();
+        push @keyValue, { "keyValue" => $keyValue };
+
+        my $token = getToken();
+        if($token->{value} ne ",") {
+            putToken($token);
+            return \@keyValue;
+        }
+
+        $keyValue = keyValue();
+        push @keyValue, { "keyValue" => $keyValue };
+    }
+    return 1;
+}
+
+sub arrayElements() {
+    my @arrayElements = ();
+    while(1) {
+        my $arrayElement = arrayElement();
+        push @arrayElements, { "arrayElement" => $arrayElement };
+
+        my $token = getToken();
+        if($token->{value} ne ",") {
+            putToken($token);
+            return \@arrayElements;
+        }
+
+        $arrayElement = arrayElement();
+        push @arrayElements, { "arrayElement" => $arrayElement };
+    }
+}
+
+sub arrayElement() {
+    my $anyValue = anyValue();
+    if(! $anyValue) { return 0; }
+    return $anyValue;
+}
+
+sub keyValue() {
+    my $keyValue = {};
+
+    my $key = key();
+    if(! $key) {return 0};
+    $keyValue->{"key"} = $key;
+
+    my $separator = sep();
+    if(! $separator) { return 0; }
+    $keyValue->{"separator"} = $separator;
+
+    my $value = value();
+    if(! $value) { return 0; }
+    $keyValue->{"value"} = $value;
+
+    return $keyValue;
+}
+
 sub key() {
     my $stringValue = stringValue();
     if(! $stringValue) { return 0; }
 
-    return $stringValue;
+    return { "stringValue" => $stringValue };
 }
 
 sub stringValue() {
@@ -378,59 +398,78 @@ sub sep() {
         return 0;
     }
 
-    return $sep;
+    return ":";
 }
 
 sub value() {
     my $anyValue = anyValue();
-    if(! $anyValue) { return 0; }
-    return $anyValue;
+    if(! $anyValue) { return 0 };
+    return {"anyValue" => $anyValue};
 }
 
 sub anyValue() {
-    
     my $stringValue = stringValue();
     if($stringValue) {
-        return $stringValue;
+        return { "stringValue" => $stringValue };
     }
 
     my $numericValue = numericValue();
     if($numericValue) {
-        return $numericValue;
+        return { "numericValue" => $numericValue };
     }
 
     my $nullValue = nullValue();
     if($nullValue) {
-        return $nullValue;
+        return { "nullValue" => $nullValue };
     }
 
     my $hash = hash();
     if($hash) {
-        return $hash;
+        return { "hash" =>$hash };
     }
 
     my $array = array();
     if($array) {
-        return $array;
+        return { "array" => $array };
     }
 
     my $true = true();
     if($true) {
-        return $true;
+        return { "true" => $true };
     }
 
     my $false = false();
     if($false) {
-        return $false;
+        return { "false" => $false };
     }
 
     return 0;
 }
 
+sub tokenOpenBrace() {
+    my $token = getToken();
+    if( $token->{"value"} eq "{" ) {
+        return 1;
+    } else {
+        putToken($token);
+        return 0;
+    }
+}
+
+sub tokenCloseBrace() {
+    my $token = getToken();
+    if( $token->{"value"} eq "}" ) {
+        return 1;
+    } else {
+        putToken($token);
+        return 0;
+    }
+}
+
+
 sub nullValue() {
     my $token = getToken();
-    use Data::Printer;
-    p $token;
+  
     if( $token->{"value"} eq "null" ) {
         return "null";
     } else {
@@ -459,46 +498,6 @@ sub false() {
     }
 }
 
-sub array() {
-    my $openBracket = tokenOpenBracket();
-    if(! $openBracket) { return 0; }
-
-    my $arrayElements = arrayElements();
-    if(! $arrayElements) { return 0; }
-
-    my $closeBracket = tokenCloseBracket();
-    if(! $closeBracket) { return 0; }
-
-    my $hash = {};
-    $hash->{"openBracket"} = "[";
-    $hash->{"arrayElements"} = $arrayElements;
-    $hash->{"closeBracket"} = "]";
-
-    return $hash;
-}
-
-sub arrayElements() {
-    my $arrayElements = {};
-    while(1) {
-        my $arrayElement = arrayElement();
-        $arrayElements->{"arrayElement"} = $arrayElement;
-
-        my $token = getToken();
-        if($token->{value} ne ",") {
-            putToken($token);
-            return $arrayElement;
-        }
-
-        $arrayElement = arrayElement();
-        $arrayElements->{"arrayElement"} = $arrayElement;
-    }
-}
-
-sub arrayElement() {
-    my $anyValue = anyValue();
-    if(! $anyValue) { return 0; }
-    return $anyValue;
-}
 
 
 my $json = '{
@@ -506,17 +505,16 @@ my $json = '{
     "null" : null,
     "true" : true,
     "foo" : "thirtyfour",
-    "buz":  { 
-        "zub" : "a string with spaces",
-        "more": "three"
+    "buz":  {
+        "ase" : [1,2],
+        "string": "another string"
     }
     "1" : 41
   }
 ';
 
-my $jsonResultHash = parse($json);
-use Data::Printer;
-p %{$jsonResultHash->{hash}};
+my %jsonResultHash = parse($json);
+p %jsonResultHash;
 
 
 
