@@ -300,7 +300,9 @@ sub keyValues() {
     my @keyValue = ();
     while(1) {
         my $keyValue = keyValue();
-        push @keyValue, { "keyValue" => $keyValue };
+        if($keyValue) {
+            push @keyValue, { "keyValue" => $keyValue };
+        }
 
         my $token = getToken();
         if($token->{value} ne ",") {
@@ -309,7 +311,9 @@ sub keyValues() {
         }
 
         $keyValue = keyValue();
-        push @keyValue, { "keyValue" => $keyValue };
+        if($keyValue) {
+            push @keyValue, { "keyValue" => $keyValue };
+        }
     }
     return 1;
 }
@@ -318,7 +322,9 @@ sub arrayElements() {
     my @arrayElements = ();
     while(1) {
         my $arrayElement = arrayElement();
-        push @arrayElements, { "arrayElement" => $arrayElement };
+        if($arrayElement) {
+            push @arrayElements, { "arrayElement" => $arrayElement };
+        }
 
         my $token = getToken();
         if($token->{value} ne ",") {
@@ -327,7 +333,9 @@ sub arrayElements() {
         }
 
         $arrayElement = arrayElement();
-        push @arrayElements, { "arrayElement" => $arrayElement };
+        if($arrayElement) {
+            push @arrayElements, { "arrayElement" => $arrayElement };
+        }
     }
 }
 
