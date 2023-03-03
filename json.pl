@@ -506,11 +506,10 @@ sub false() {
     }
 }
 
-##################################### Formatter
+##################################### Genrator
 
-sub formatter {
+sub generator {
     my (%ast) = @_;
-    p %ast;
 
     my $write = "";
     my @keys = keys %ast;
@@ -540,7 +539,7 @@ sub __hash {
     my ($ast) = @_;
 
     my $write = "";
-    $write .= "{\n";
+    $write .= "{";
     
     my @keys = keys %{$ast};
     foreach my $key (@keys) {
@@ -549,7 +548,7 @@ sub __hash {
         }
     }
 
-    $write .= "\n}";
+    $write .= "}";
     return $write;
 }
 
@@ -565,15 +564,7 @@ sub __keyValues {
         }
     }
     chop($write);
-    chop($write);
     return $write;
-}
-
-sub removeLastCommaNewLine {
-    my ($keyValue) = @_;
-    chop($keyValue);
-    chop($keyValue);
-    return $keyValue;
 }
 
 sub __keyValue {
@@ -583,7 +574,7 @@ sub __keyValue {
     my $key = __key($keyValue->{key});
     my $value = __value($keyValue->{value});
 
-    my $keyValue = "\t\"" . $key . "\" : " . $value . ",\n";
+    $keyValue = "\"" . $key . "\":" . $value . ",";
     return $keyValue;
 }
 
@@ -649,7 +640,7 @@ sub __nullValue {
 
 sub __stringValue {
     my ($ast) = @_;
-    return $ast;
+    return "\"" . $ast . "\"";
 }
 
 sub __array {
@@ -677,9 +668,7 @@ sub __arrayElements {
 
 sub __arrayElement {
     my ($ast) = @_;
-    #p $ast;
     my $anyValue = __anyValue($ast->{arrayElement});
-    #exit;
     return $anyValue;
 }
 
@@ -694,7 +683,7 @@ my $json = '{
     "true" : true,
     "foo" : "thirtyfour",
     "buz":  {
-        "ase" : [21,2],
+        "ase" : [21,2,2,3],
         "string": "another string"
     }
     "1" : 41
@@ -702,11 +691,8 @@ my $json = '{
 ';
 
 my %jsonResultHash = parse($json);
-my $formattedJson = formatter(%jsonResultHash);
+my $formattedJson = generator(%jsonResultHash);
 print $formattedJson;
-
-#my $json = generator(%jsonResultHash);
-
 
 
 my $bnf = '
