@@ -229,8 +229,8 @@ sub parse($json) {
     my %hash;
     my $ast = json();
     if($ast) {
-        $hash{"ast"} = $ast;
-        print JSON->new->ascii->pretty->encode(\%hash);
+        $hash{"json"} = $ast;
+        #print JSON->new->ascii->pretty->encode(\%hash);
         return %hash;
     } else {
         return 0;
@@ -506,7 +506,187 @@ sub false() {
     }
 }
 
+##################################### Formatter
 
+sub formatter {
+    my (%ast) = @_;
+    p %ast;
+
+    my $write = "";
+    my @keys = keys %ast;
+    foreach my $key (@keys) {
+        if($key eq "json") {
+            $write .= __json($ast{$key});
+        }
+    }
+    return $write;
+}
+
+sub __json {
+    my ($ast) = @_;
+    my $write = "";
+    
+    my @keys = keys %{$ast};
+    foreach my $key (@keys) {
+        if($key eq "hash") {
+            $write .= __hash($ast->{$key});
+        }
+    }
+
+    return $write;
+}
+
+sub __hash {
+    my ($ast) = @_;
+
+    my $write = "";
+    $write .= "{\n";
+    
+    my @keys = keys %{$ast};
+    foreach my $key (@keys) {
+        if($key eq "keyValues") {
+            $write .= __keyValues($ast->{$key});
+        }
+    }
+
+    $write .= "\n}";
+    return $write;
+}
+
+sub __keyValues {
+    my ($ast) = @_;
+    # p $ast;
+    my $write = "";
+
+    if(ref($ast) eq "ARRAY") {
+        my @array = @$ast;
+        foreach my $element (@array) {
+            $write .= __keyValue($element);
+        }
+    }
+    chop($write);
+    chop($write);
+    return $write;
+}
+
+sub removeLastCommaNewLine {
+    my ($keyValue) = @_;
+    chop($keyValue);
+    chop($keyValue);
+    return $keyValue;
+}
+
+sub __keyValue {
+    my ($ast) = @_;
+    my $keyValue = $ast->{"keyValue"};
+    
+    my $key = __key($keyValue->{key});
+    my $value = __value($keyValue->{value});
+
+    my $keyValue = "\t\"" . $key . "\" : " . $value . ",\n";
+    return $keyValue;
+}
+
+sub __key {
+    my ($ast) = @_;
+    my $stringValue = $ast->{stringValue};
+    return $stringValue;
+}
+
+sub __value {
+    my ($ast) = @_;
+    my $anyValue = __anyValue($ast->{anyValue});
+    return $anyValue;
+}
+
+sub __anyValue {
+    my ($ast) = @_;
+    my $write = "";
+
+    my @keys = keys %{$ast};
+    foreach my $key (@keys) {
+        if($key eq "stringValue") {
+            $write .= __stringValue($ast->{$key});
+        }
+
+        if($key eq "numericValue") {
+            $write .= __numericValue($ast->{$key});
+        }
+        if($key eq "nullValue") {
+            $write .= __nullValue($ast->{$key});
+        }
+        if($key eq "hash") {
+            $write .= __hash($ast->{$key});
+        }
+        if($key eq "array") {
+            $write .= __array($ast->{$key});
+        }
+        if($key eq "true") {
+            $write .= __true($ast->{$key});
+        }
+        if($key eq "false") {
+            $write .= __false($ast->{$key});
+        }
+    }
+
+    return $write;
+}
+
+sub __false {
+    my ($ast) = @_;
+    return $ast;
+}
+
+sub __true {
+    my ($ast) = @_;
+    return $ast;
+}
+
+sub __nullValue {
+    my ($ast) = @_;
+    return $ast;
+}
+
+sub __stringValue {
+    my ($ast) = @_;
+    return $ast;
+}
+
+sub __array {
+    my ($ast) = @_;
+    my $arrayElements = __arrayElements($ast->{arrayElements});
+    return $arrayElements;
+}
+
+sub __arrayElements {
+    my ($ast) = @_;
+    my $write = "[";
+
+    if(ref($ast) eq "ARRAY") {
+        my @array = @$ast;
+        foreach my $element (@array) {
+            $write .= __arrayElement($element);
+            $write .= ",";
+        }
+        chop($write);
+    }
+
+    $write .= "]";
+    return $write;
+}
+
+sub __arrayElement {
+    my ($ast) = @_;
+    #p $ast;
+    my $anyValue = __anyValue($ast->{arrayElement});
+    #exit;
+    return $anyValue;
+}
+
+sub __numericValue {
+    my ($ast) = @_;
+    return $ast;
+}
 
 my $json = '{
     "false" : false,
@@ -514,7 +694,7 @@ my $json = '{
     "true" : true,
     "foo" : "thirtyfour",
     "buz":  {
-        "ase" : [1,2],
+        "ase" : [21,2],
         "string": "another string"
     }
     "1" : 41
@@ -522,7 +702,10 @@ my $json = '{
 ';
 
 my %jsonResultHash = parse($json);
-p %jsonResultHash;
+my $formattedJson = formatter(%jsonResultHash);
+print $formattedJson;
+
+#my $json = generator(%jsonResultHash);
 
 
 
