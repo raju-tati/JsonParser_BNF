@@ -693,33 +693,3 @@ my $json = '{
 my %jsonResultHash = parse($json);
 my $formattedJson = generator(%jsonResultHash);
 print $formattedJson;
-
-
-my $bnf = '
-<JSON>                <Hash>
-<Any_Value>           <String_Value> | <Numeric_Value>
-                        | <Null_Value> | <Hash> | <Array>
-                        | <True> | <False>
-<Hash>                <TokenOpenBrace> <Key_Values> <TokenClosedBrace>
-<Key_Values>          <Key_Value> <Comma> <Key_Value>
-<Key_Value>           <Key> <Sep> <Value>
-<Key>                 <String_Value>
-<Value>               <Any_Value>
-<Array>               <TokenOpenBracket> <Array_Elements> <TokenClosedBracket>
-<Array_Elements>      <Array_Element> <Comma> <Array_Element>
-<Array_Element>       <Any_Value>
-<String_Value>        "<Words>"
-<Words>               (.)*?
-<Numeric_Value>       \s*<Number>\s*
-<Number>              [-]?[\d\.]*
-<Null_Value>            null
-<True>                  true
-<False>                 false
-<Sep>                   \:
-<Comma>                 \,
-<TokenOpenBrace>        \{
-<TokenClosedBrace>      \}
-<TokenOpenBracket>      \[
-<TokenClosedBracket>    \]
-
-';
