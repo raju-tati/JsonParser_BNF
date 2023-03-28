@@ -690,6 +690,6 @@ my $json = '{
   }
 ';
 
-my %jsonResultHash = parse($json);
-my $formattedJson = generator(%jsonResultHash);
+my %jsonAst = parse($json);
+my $formattedJson = generator(%jsonAst);
 print $formattedJson;
